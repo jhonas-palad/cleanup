@@ -1,0 +1,33 @@
+#!/Users/jhonas/Developer/automation/cleanup/venv/bin/python
+import sys
+
+import cleanup
+from cleanup.management import get_command, commands
+
+COMMAND_CHOICES = [
+    command_name for command_name in commands
+] + ['all']
+DESCRIPTION = "A simple solution to declutter your MacOS system."
+
+TAB=" " * 2
+USAGE = "\nUsage:\n" \
+        "%(tab)s%(program)s <comand> [options]\n" \
+        "Commands:\n" \
+        "%(tab)s%(commands)s\n"
+        
+
+def main() -> int:
+    _args = sys.argv[:]
+    if len(_args) < 2:
+        sys.stderr.write(USAGE % {
+            "tab": TAB, 
+            "program": _args[0].rsplit('/')[-1],
+            "commands": f'{TAB}\n{TAB}'.join(COMMAND_CHOICES)
+        })
+        return -1
+    command = _args[1]
+    args = _args[2:]
+    get_command(command, args=args).run()
+    return 0
+if __name__ == '__main__':
+    sys.exit(main())

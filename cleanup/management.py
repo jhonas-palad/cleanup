@@ -23,7 +23,6 @@ class Command:
 
 def get_command(command_name, args = None):
     command = commands.get(command_name, None)
-    print(command)
     if command is None:
         raise argparse.ArgumentError(argument=None,message=f"Invalid command {command_name}. "
                                              f"Choose only from these commands {tuple([command_ for command_ in commands])}")
