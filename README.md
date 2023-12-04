@@ -6,7 +6,7 @@ A simple solution to declutter your MacOS system.
 
 ## Requirements
 - MacOS
-- Python>=3.10
+- Python>=3.12,<3.13
 
 ## Identifying the task to automate
 
