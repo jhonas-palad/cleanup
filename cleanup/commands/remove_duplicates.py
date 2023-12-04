@@ -4,8 +4,8 @@ from ..colors import textclr, Color
 from ..management import Command
 from argparse import ArgumentParser
 from filecmp import cmp
-
-
+from tqdm import tqdm
+import time
 class RemoveDuplicate(Command):
     prog="removeduplicate"
     usage="./cleanup_bin removeduplicate [.../path/to/directory]"
@@ -30,15 +30,40 @@ class RemoveDuplicate(Command):
             action='store_true',
         )
         return parser.parse_args(self.initials_args)
+    @property
+    def directories(self):
+        if not hasattr(self,"_directories"):
+            self._directories = self.opts.dirs
+        
+        for _dir in self._directories:
+            abs_dir = _dir
+            if not os.path.isabs(_dir):
+                abs_dir = os.path.abspath(os.path.expanduser(_dir))
+            if not os.path.isdir(abs_dir):
+                continue
+            yield abs_dir
     def run(self):
+        """
+        1. Traverse each directories passed in the arguments
+        2. Search for duplicate files
+        3. Choose the base file whose filename is the shortest of the duplicate files.
+        4. Remove each duplicates and leave the base file.
+        """
         super().run()
         self._directories = self.opts.dirs
         self.recursive = self.opts.recursive
-
-        for _dir in self.directories:
-            sys.stdout.write(f"Checking duplicates in {textclr(_dir, Color.LIGHT_PURPLE.value)}:\n")
+        self.handle()
+    def handle(self):
+        directories = self.directories
+        
+        for _dir in directories:
             duplicates_list = self.find_duplicates(_dir)
+            if not duplicates_list:
+                sys.stdout.write("> %s:\n  %s\n" % (_dir, textclr("No duplicates found", Color.LIGHT_PURPLE.value)))
+                continue
+            total_files = len(duplicates_list)
             for i in duplicates_list:
+                
                 sorted_duplicate_list = sorted(i, key=lambda x: -len(x) , reverse=True)
                 
                 base_filepath = sorted_duplicate_list[0]
@@ -48,44 +73,19 @@ class RemoveDuplicate(Command):
                     sorted_duplicate_list[1:]
                 )
                 self._remove_duplicates(base_filepath)
+    
             
-            if _dir in [os.path.dirname(filepath) for filepath in self.file_duplicates.keys()]:
-                for filepath, duplicates in self.file_duplicates.items():
-                    filename = os.path.basename(filepath)
-                    sys.stdout.write(
-                        f"> Duplicates of {textclr(filename, Color.LIGHT_BLUE.value)} in {textclr(os.path.dirname(filepath),Color.LIGHT_PURPLE.value)}:\n  - "
-                        f"{'\n  - '.join([
-                            f"{textclr(os.path.basename(filename), Color.LIGHT_BLUE.value)}" for filename in duplicates
-                        ])}\n"
-                    )
-            else:
-                sys.stdout.write(f"> {textclr("No duplicates found", Color.LIGHT_GREEN.value)}\n")
-
-    @property
-    def directories(self):
-        if not hasattr(self,"_directories"):
-            self._directories = self.opts.dirs
-        if len(self._valid_dirs):
-            return self._valid_dirs
-        
-        for _dir in self._directories:
-            abs_dir = _dir
-            if not os.path.isabs(_dir):
-                abs_dir = os.path.abspath(os.path.expanduser(_dir))
-            if not os.path.isdir(abs_dir):
-                sys.stdout.write(f"{_dir} is not a directory or path doesn't exist.\n")
-                self._skipped_dirs(abs_dir)
-                continue
-            self._valid_dirs.add(abs_dir)
-            #add progress bar
-            
-        return self._valid_dirs
     def _remove_duplicates(self, filepath):
+        directory = os.path.dirname(filepath)
+        filename = os.path.basename(filepath)
         duplicates = self.file_duplicates.get(filepath)
-        for file in duplicates:
-            if not os.path.exists:
-                continue
-            os.remove(file)
+        total_duplicates = len(duplicates)
+        
+        for duplicate_file in tqdm(duplicates, 
+                                   total=total_duplicates, 
+                                   desc=f"Removing duplicates of {textclr(filename, Color.LIGHT_GREEN.value)} in {textclr(filename, Color.LIGHT_PURPLE.value)}"):
+            if os.path.exists(duplicate_file):
+                os.remove(duplicate_file)
 
     def map_file_duplicates(self, base_filepath, duplicates):
         if not isinstance(duplicates, list):
