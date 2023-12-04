@@ -27,7 +27,10 @@ def main() -> int:
         return -1
     command = _args[1]
     args = _args[2:]
-    get_command(command, args=args).run()
+    try:
+        get_command(command, args=args).run()
+    except Exception as e:
+        sys.stderr.write(str(e) + '\n')
     return 0
 if __name__ == '__main__':
     sys.exit(main())
